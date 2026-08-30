@@ -1,0 +1,6 @@
+{
+  "name": "PATHDRISHTI — पथदृष्टि",
+  "description": "City-wide ANPR traffic and security monitoring platform prototype for Smart India Hackathon (BEL PS26127)",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
