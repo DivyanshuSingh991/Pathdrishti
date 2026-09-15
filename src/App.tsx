@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import { AppProvider } from './context/AppContext';
 import { TopNavbar } from './components/layout/TopNavbar';
 import { Sidebar } from './components/layout/Sidebar';
@@ -11,6 +12,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AppProvider>
+        <Analytics />
         <div className="flex flex-col min-h-screen bg-[#f6f7f9] text-[#111827] font-sans antialiased selection:bg-blue-100 selection:text-blue-900">
           {/* Top Control Room Navbar */}
           <TopNavbar />
