@@ -43,10 +43,11 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
       attributionControl: false
     });
 
-    // Add clean CartoDB Positron / OSM tiles for monochrome control-room aesthetic
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    // OpenStreetMap standard free tiles (no API key required)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      subdomains: 'abcd',
+      subdomains: ['a', 'b', 'c'],
+      attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
     const layerGroup = L.layerGroup().addTo(map);
