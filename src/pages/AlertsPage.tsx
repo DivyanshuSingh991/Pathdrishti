@@ -143,8 +143,8 @@ export const AlertsPage: React.FC = () => {
           );
         case 'cloned_plate':
           return (
-            <span className="text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded uppercase tracking-tight inline-flex items-center space-x-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
+            <span className="text-[11px] font-bold bg-red-100 text-red-900 border border-red-300 px-2 py-0.5 rounded uppercase tracking-tight inline-flex items-center space-x-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>
               <span>Cloned plate suspect</span>
             </span>
           );
@@ -168,8 +168,8 @@ export const AlertsPage: React.FC = () => {
       switch (type) {
         case 'overspeeding':
           return (
-            <span className="text-[11px] font-bold bg-red-100 text-red-900 border border-red-300 px-2 py-0.5 rounded uppercase tracking-tight inline-flex items-center space-x-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>
+            <span className="text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded uppercase tracking-tight inline-flex items-center space-x-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
               <span>Overspeeding</span>
             </span>
           );

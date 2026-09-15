@@ -1,7 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { Camera, DetectionEvent, CityZone, Vehicle } from '../../types';
 import { LUCKNOW_CENTER, getCameraById } from '../../data/mock-data';
+import { Camera as CameraIcon, CheckCircle2, AlertOctagon, Layers } from 'lucide-react';
 
 interface LeafletMapProps {
   viewMode?: 'live' | 'heatmap' | 'od';
@@ -9,11 +10,13 @@ interface LeafletMapProps {
   detections?: DetectionEvent[];
   selectedDetection?: DetectionEvent | null;
   onSelectDetection?: (detection: DetectionEvent) => void;
-  // Specific trajectory mode for search page
+  // Specific trajectory mode for search page (UNTOUCHED)
   trajectoryEvents?: DetectionEvent[];
   cityZones?: CityZone[];
   height?: string;
   focusVehiclePlate?: string | null;
+  focusedCameraId?: string | null;
+  focusedEventId?: string | null;
 }
 
 export const LeafletMap: React.FC<LeafletMapProps> = ({
@@ -25,11 +28,20 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   trajectoryEvents,
   cityZones = [],
   height = '440px',
-  focusVehiclePlate
+  focusVehiclePlate,
+  focusedCameraId,
+  focusedEventId
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const layerGroupRef = useRef<L.LayerGroup | null>(null);
+  const markersRef = useRef<{ [key: string]: L.Marker }>({});
+
+  // Filter state for live camera view
+  const [cameraFilter, setCameraFilter] = useState<'all' | 'working' | 'offline'>('all');
+
+  const workingCameras = cameras.filter(c => c.status === 'active');
+  const offlineCameras = cameras.filter(c => c.status === 'inactive');
 
   // Initialize map once
   useEffect(() => {
@@ -68,7 +80,36 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     };
   }, []);
 
-  // Update map contents whenever props change
+  // Smoothly center on focused camera when clicked from timeline/gallery
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (focusedCameraId || focusedEventId) {
+      const targetCam =
+        cameras.find(c => c.id === focusedCameraId) ||
+        (focusedEventId && trajectoryEvents?.find(e => e.id === focusedEventId)
+          ? getCameraById(trajectoryEvents.find(e => e.id === focusedEventId)!.cameraId)
+          : null);
+
+      if (targetCam) {
+        map.flyTo([targetCam.lat, targetCam.lng], 15, {
+          animate: true,
+          duration: 0.9
+        });
+
+        // Open popup for marker if present
+        const key = focusedEventId || focusedCameraId;
+        if (key && markersRef.current[key]) {
+          setTimeout(() => {
+            markersRef.current[key]?.openPopup();
+          }, 350);
+        }
+      }
+    }
+  }, [focusedCameraId, focusedEventId, cameras, trajectoryEvents]);
+
+  // Update map contents whenever props or filter change
   useEffect(() => {
     const map = mapInstanceRef.current;
     const layerGroup = layerGroupRef.current;
@@ -160,6 +201,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     // 3. SEARCH / TRAJECTORY MODE (Sequential numbered stops)
     if (trajectoryEvents && trajectoryEvents.length > 0) {
       const latLngs: [number, number][] = [];
+      markersRef.current = {};
 
       trajectoryEvents.forEach((evt, idx) => {
         const cam = getCameraById(evt.cameraId);
@@ -169,25 +211,27 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
         const isViolation = !!evt.violationFlag;
         const isAlert = evt.status !== 'Normal';
         const badgeColor = isAlert || isViolation ? '#dc2626' : '#16a34a';
+        const isFocused = evt.id === focusedEventId || cam.id === focusedCameraId;
 
         const stopIcon = L.divIcon({
           className: 'custom-trajectory-marker',
           html: `
             <div style="
-              width: 28px;
-              height: 28px;
+              width: ${isFocused ? '34px' : '28px'};
+              height: ${isFocused ? '34px' : '28px'};
               border-radius: 50%;
               background: ${badgeColor};
               color: #ffffff;
-              border: 2px solid #ffffff;
-              box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+              border: ${isFocused ? '3px solid #378ADD' : '2px solid #ffffff'};
+              box-shadow: ${isFocused ? '0 0 0 4px rgba(55, 138, 221, 0.45), 0 3px 8px rgba(0,0,0,0.4)' : '0 2px 4px rgba(0,0,0,0.3)'};
               display: flex;
               align-items: center;
               justify-content: center;
               font-weight: bold;
-              font-size: 12px;
+              font-size: ${isFocused ? '14px' : '12px'};
               font-family: monospace;
-              transform: translate(-14px, -14px);
+              transform: translate(-50%, -50%);
+              transition: all 0.2s ease;
             ">
               ${idx + 1}
             </div>
@@ -210,6 +254,8 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
           </div>
         `);
         marker.addTo(layerGroup);
+        markersRef.current[evt.id] = marker;
+        markersRef.current[cam.id] = marker;
       });
 
       // Draw dashed trajectory polyline
@@ -221,160 +267,296 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
           dashArray: '7, 7'
         });
         pathLine.addTo(layerGroup);
-        map.fitBounds(pathLine.getBounds(), { padding: [40, 40] });
-      } else if (latLngs.length === 1) {
+        if (!focusedCameraId && !focusedEventId) {
+          map.fitBounds(pathLine.getBounds(), { padding: [40, 40] });
+        }
+      } else if (latLngs.length === 1 && !focusedCameraId && !focusedEventId) {
         map.setView(latLngs[0], 14);
       }
       return;
     }
 
-    // 4. LIVE MAP MODE (Default)
-    // Draw 8-10 fixed cameras (blue dots)
-    cameras.forEach(cam => {
+    // 4. LIVE MAP MODE: SHOW ANPR CAMERA LOCATIONS & WORKING/NOT WORKING STATUS
+    // Filter cameras based on active tab
+    const displayCameras = cameras.filter(cam => {
+      if (cameraFilter === 'working') return cam.status === 'active';
+      if (cameraFilter === 'offline') return cam.status === 'inactive';
+      return true;
+    });
+
+    displayCameras.forEach(cam => {
+      const isWorking = cam.status === 'active';
+      const camDetectionsCount = detections.filter(d => d.cameraId === cam.id).length;
+
+      // Optional coverage radius circle
+      const coverageCircle = L.circle([cam.lat, cam.lng], {
+        radius: 350,
+        color: isWorking ? '#16a34a' : '#dc2626',
+        fillColor: isWorking ? '#22c55e' : '#ef4444',
+        fillOpacity: isWorking ? 0.08 : 0.15,
+        weight: 1,
+        dashArray: isWorking ? undefined : '4, 4'
+      });
+      coverageCircle.addTo(layerGroup);
+
+      // Camera Pin HTML Icon with Working / Not Working Visuals
+      const camIconHtml = isWorking
+        ? `
+          <div style="cursor: pointer; display: flex; flex-direction: column; align-items: center; transform: translate(-50%, -50%);">
+            <div style="
+              position: relative;
+              width: 32px;
+              height: 32px;
+              border-radius: 50%;
+              background: #15803d;
+              border: 2px solid #ffffff;
+              box-shadow: 0 3px 6px rgba(0,0,0,0.35);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: #ffffff;
+            ">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path>
+                <circle cx="12" cy="13" r="3"></circle>
+              </svg>
+              <span style="
+                position: absolute;
+                top: -2px;
+                right: -2px;
+                width: 9px;
+                height: 9px;
+                border-radius: 50%;
+                background: #22c55e;
+                border: 1.5px solid #ffffff;
+              "></span>
+            </div>
+            <div style="
+              margin-top: 3px;
+              background: rgba(17, 24, 39, 0.92);
+              color: #ffffff;
+              font-family: monospace;
+              font-size: 10px;
+              font-weight: bold;
+              padding: 1px 5px;
+              border-radius: 3px;
+              border: 1px solid rgba(255, 255, 255, 0.25);
+              white-space: nowrap;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            ">
+              ${cam.id}
+            </div>
+          </div>
+        `
+        : `
+          <div style="cursor: pointer; display: flex; flex-direction: column; align-items: center; transform: translate(-50%, -50%);">
+            <div style="
+              position: relative;
+              width: 32px;
+              height: 32px;
+              border-radius: 50%;
+              background: #dc2626;
+              border: 2px solid #ffffff;
+              box-shadow: 0 3px 8px rgba(220,38,38,0.5);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: #ffffff;
+            ">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 1l22 22"></path>
+                <path d="M21 15V9a2 2 0 0 0-2-2h-3l-2.5-3h-3.8"></path>
+                <path d="M7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16"></path>
+                <circle cx="12" cy="13" r="3"></circle>
+              </svg>
+              <span style="
+                position: absolute;
+                top: -2px;
+                right: -2px;
+                width: 9px;
+                height: 9px;
+                border-radius: 50%;
+                background: #f87171;
+                border: 1.5px solid #ffffff;
+              "></span>
+            </div>
+            <div style="
+              margin-top: 3px;
+              background: #dc2626;
+              color: #ffffff;
+              font-family: monospace;
+              font-size: 10px;
+              font-weight: bold;
+              padding: 1px 5px;
+              border-radius: 3px;
+              border: 1px solid #ffffff;
+              white-space: nowrap;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            ">
+              ${cam.id} [OFFLINE]
+            </div>
+          </div>
+        `;
+
       const camIcon = L.divIcon({
-        className: 'custom-cam-marker',
-        html: `
-          <div style="
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background: #378ADD;
-            border: 2px solid #ffffff;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.4);
-            transform: translate(-8px, -8px);
-          "></div>
-        `,
+        className: 'custom-anpr-node-marker',
+        html: camIconHtml,
         iconSize: [0, 0]
       });
 
       const camMarker = L.marker([cam.lat, cam.lng], { icon: camIcon });
-      camMarker.bindPopup(`
-        <div style="font-family: sans-serif; font-size: 12px; line-height: 1.4; min-width: 170px;">
-          <div style="font-weight: bold; font-size: 13px; color: #111827; margin-bottom: 2px;">${cam.name}</div>
-          <div style="color: #4b5563; font-size: 11px; margin-bottom: 4px;">${cam.locationName}</div>
-          <div><strong>Status:</strong> <span style="color: ${cam.status === 'active' ? '#16a34a' : '#dc2626'}; font-weight: 600;">${cam.status === 'active' ? 'Active' : 'Offline'}</span></div>
-          <div><strong>Speed limit:</strong> ${cam.speedLimit} km/h</div>
-          <div><strong>Zone:</strong> ${cam.zone}</div>
+
+      // Rich Informative Popup
+      const popupHtml = `
+        <div style="font-family: sans-serif; font-size: 12px; line-height: 1.45; min-width: 220px; color: #111827;">
+          <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 6px;">
+            <div style="font-weight: bold; font-size: 13px; color: #111827;">
+              ${cam.name}
+            </div>
+            <span style="
+              font-size: 10px;
+              font-weight: bold;
+              padding: 2px 6px;
+              border-radius: 3px;
+              text-transform: uppercase;
+              ${isWorking ? 'background: #dcfce7; color: #15803d;' : 'background: #fee2e2; color: #dc2626;'}
+            ">
+              ${isWorking ? '● Working (Online)' : '● Not Working (Offline)'}
+            </span>
+          </div>
+
+          <div style="color: #4b5563; font-size: 11px; margin-bottom: 6px;">
+            📍 ${cam.locationName}
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: #f9fafb; padding: 6px; border-radius: 4px; border: 1px solid #f3f4f6; margin-bottom: 6px;">
+            <div>
+              <span style="color: #6b7280; font-size: 10px; display: block;">City Zone:</span>
+              <strong style="color: #1f2937;">${cam.zone}</strong>
+            </div>
+            <div>
+              <span style="color: #6b7280; font-size: 10px; display: block;">Speed Limit:</span>
+              <strong style="color: #1f2937;">${cam.speedLimit} km/h</strong>
+            </div>
+            <div style="grid-column: span 2; margin-top: 2px;">
+              <span style="color: #6b7280; font-size: 10px; display: block;">Direction / Corridor:</span>
+              <strong style="color: #1f2937;">${cam.directionLabel}</strong>
+            </div>
+          </div>
+
+          <div style="border-top: 1px solid #f3f4f6; padding-top: 5px; font-size: 11px;">
+            ${
+              isWorking
+                ? `
+                  <div style="color: #15803d; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+                    <span>Optical ANPR Stream:</span>
+                    <span>1080p @ 30 FPS</span>
+                  </div>
+                  <div style="color: #374151; margin-top: 2px;">
+                    Detections today: <strong>${camDetectionsCount > 0 ? camDetectionsCount : 24} vehicles scanned</strong>
+                  </div>
+                `
+                : `
+                  <div style="color: #dc2626; font-weight: 600;">
+                    ⚠️ Sensor Disconnect / Scheduled Maintenance
+                  </div>
+                  <div style="color: #6b7280; font-size: 10px; margin-top: 2px;">
+                    Maintenance Ticket #LKO-ANPR-${cam.id.replace('CAM-', '90')} Dispatch Active
+                  </div>
+                `
+            }
+          </div>
         </div>
-      `);
+      `;
+
+      camMarker.bindPopup(popupHtml);
       camMarker.addTo(layerGroup);
     });
 
-    // Draw active vehicle detections (latest 15-20 detections or focused vehicle)
-    const displayDetections = focusVehiclePlate
-      ? detections.filter(d => d.plateText.toUpperCase() === focusVehiclePlate.toUpperCase())
-      : detections.slice(-14);
-
-    // Trajectory lines for selected vehicle if multiple sightings exist
-    const vehicleSightings: { [plate: string]: [number, number][] } = {};
-
-    displayDetections.forEach(evt => {
-      const cam = getCameraById(evt.cameraId);
-      if (!cam) return;
-
-      if (!vehicleSightings[evt.plateText]) {
-        vehicleSightings[evt.plateText] = [];
-      }
-      vehicleSightings[evt.plateText].push([cam.lat, cam.lng]);
-
-      const isDanger = evt.status !== 'Normal' || !!evt.violationFlag;
-      const markerColor = isDanger ? '#dc2626' : '#16a34a';
-
-      const isSelected = selectedDetection?.id === evt.id;
-
-      const vehicleIcon = L.divIcon({
-        className: 'custom-vehicle-marker',
-        html: `
-          <div style="
-            width: ${isSelected ? '22px' : '18px'};
-            height: ${isSelected ? '22px' : '18px'};
-            border-radius: 4px;
-            background: ${markerColor};
-            border: 2px solid ${isSelected ? '#111827' : '#ffffff'};
-            box-shadow: 0 2px 5px rgba(0,0,0,0.35);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #ffffff;
-            font-size: 10px;
-            font-weight: bold;
-            transform: translate(-50%, -50%);
-          ">
-            ${evt.vehicleType === 'bike' ? '🏍' : evt.vehicleType === 'truck' ? '🚚' : evt.vehicleType === 'auto' ? '🛺' : '🚗'}
-          </div>
-        `,
-        iconSize: [0, 0]
-      });
-
-      const vMarker = L.marker([cam.lat, cam.lng], { icon: vehicleIcon });
-
-      vMarker.on('click', () => {
-        if (onSelectDetection) {
-          onSelectDetection(evt);
-        }
-      });
-
-      vMarker.bindPopup(`
-        <div style="font-family: sans-serif; font-size: 12px; line-height: 1.4; min-width: 200px; color: #111827;">
-          <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; margin-bottom: 4px;">
-            <span style="font-family: monospace; font-weight: bold; font-size: 13px;">${evt.plateText}</span>
-            <span style="font-size: 10px; background: ${isDanger ? '#fee2e2' : '#dcfce7'}; color: ${isDanger ? '#dc2626' : '#16a34a'}; padding: 1px 4px; border-radius: 2px; font-weight: bold;">${evt.status}</span>
-          </div>
-          <div><strong>Camera:</strong> ${cam.name}</div>
-          <div><strong>Timestamp:</strong> ${evt.timestamp}</div>
-          <div><strong>Lat / Long:</strong> ${cam.lat.toFixed(4)}, ${cam.lng.toFixed(4)}</div>
-          <div><strong>Vehicle:</strong> ${evt.vehicleColor} ${evt.vehicleType}</div>
-          <div><strong>Confidence:</strong> ${evt.confidence}%</div>
-          <div><strong>Speed:</strong> ${evt.speed} km/h (Limit: ${cam.speedLimit} km/h)</div>
-          <div><strong>Direction:</strong> ${evt.direction}</div>
-          ${evt.violationFlag ? `<div style="color: #dc2626; margin-top: 4px; font-weight: 600;"><strong>Violations:</strong> ${evt.violationFlag}</div>` : '<div style="color: #16a34a; margin-top: 4px;">No active violations</div>'}
-        </div>
-      `);
-
-      vMarker.addTo(layerGroup);
-    });
-
-    // Draw dashed lines for vehicles with multiple sightings
-    Object.entries(vehicleSightings).forEach(([plate, coords]) => {
-      if (coords.length > 1) {
-        L.polyline(coords, {
-          color: plate === selectedDetection?.plateText ? '#111827' : '#378ADD',
-          weight: 2.5,
-          opacity: 0.8,
-          dashArray: '5, 5'
-        }).addTo(layerGroup);
-      }
-    });
-
-  }, [viewMode, cameras, detections, selectedDetection, trajectoryEvents, cityZones, focusVehiclePlate, onSelectDetection]);
+  }, [viewMode, cameras, detections, selectedDetection, trajectoryEvents, cityZones, focusVehiclePlate, onSelectDetection, cameraFilter]);
 
   return (
     <div className="relative w-full border border-gray-200 rounded bg-white overflow-hidden" style={{ height }}>
       <div ref={mapContainerRef} className="w-full h-full z-0" />
 
+      {/* Live Map Top-Right Camera Fleet Status & Filter Overlay */}
+      {viewMode === 'live' && !trajectoryEvents && (
+        <div className="absolute top-2 right-2 bg-white/95 border border-gray-200 p-1.5 rounded-md shadow-sm z-[1000] flex items-center space-x-1.5 backdrop-blur-xs text-xs">
+          <div className="flex items-center space-x-1 px-1.5 py-0.5 text-gray-500 font-medium text-[11px] border-r border-gray-200">
+            <CameraIcon className="w-3.5 h-3.5 text-gray-700" />
+            <span>ANPR Grid:</span>
+          </div>
+
+          <button
+            onClick={() => setCameraFilter('all')}
+            className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-all ${
+              cameraFilter === 'all'
+                ? 'bg-gray-900 text-white shadow-xs'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            All ({cameras.length})
+          </button>
+
+          <button
+            onClick={() => setCameraFilter('working')}
+            className={`px-2 py-0.5 rounded text-[11px] font-semibold flex items-center space-x-1 transition-all ${
+              cameraFilter === 'working'
+                ? 'bg-emerald-700 text-white shadow-xs'
+                : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>
+            <span>Working ({workingCameras.length})</span>
+          </button>
+
+          <button
+            onClick={() => setCameraFilter('offline')}
+            className={`px-2 py-0.5 rounded text-[11px] font-semibold flex items-center space-x-1 transition-all ${
+              cameraFilter === 'offline'
+                ? 'bg-red-700 text-white shadow-xs'
+                : 'text-red-700 bg-red-50 hover:bg-red-100'
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-red-400 inline-block"></span>
+            <span>Not Working ({offlineCameras.length})</span>
+          </button>
+        </div>
+      )}
+
       {/* Map Legend Overlay */}
       <div className="absolute bottom-2 left-2 bg-white/95 border border-gray-200 text-[11px] p-2 rounded shadow-sm z-[1000] flex flex-wrap items-center gap-3 backdrop-blur-xs">
-        <div className="flex items-center space-x-1.5">
-          <span className="w-3 h-3 rounded-full bg-[#378ADD] border border-white inline-block"></span>
-          <span className="text-gray-700">Fixed ANPR camera</span>
-        </div>
-        {viewMode === 'live' && (
+        {viewMode === 'live' && !trajectoryEvents ? (
           <>
             <div className="flex items-center space-x-1.5">
-              <span className="w-3 h-3 rounded-xs bg-[#16a34a] border border-white inline-block"></span>
-              <span className="text-gray-700">Normal detection</span>
+              <span className="w-3 h-3 rounded-full bg-[#15803d] border border-white inline-block"></span>
+              <span className="text-gray-700 font-medium">Working ANPR Camera ({workingCameras.length})</span>
             </div>
             <div className="flex items-center space-x-1.5">
-              <span className="w-3 h-3 rounded-xs bg-[#dc2626] border border-white inline-block"></span>
-              <span className="text-gray-700">Alert / Blacklist / Violation</span>
+              <span className="w-3 h-3 rounded-full bg-[#dc2626] border border-white inline-block"></span>
+              <span className="text-gray-700 font-medium">Not Working / Offline ({offlineCameras.length})</span>
+            </div>
+            <div className="flex items-center space-x-1.5">
+              <span className="w-3.5 h-3.5 rounded-full border border-gray-400 border-dashed inline-block"></span>
+              <span className="text-gray-500">Coverage radius</span>
+            </div>
+          </>
+        ) : trajectoryEvents && trajectoryEvents.length > 0 ? (
+          <>
+            <div className="flex items-center space-x-1.5">
+              <span className="w-3 h-3 rounded-full bg-[#16a34a] border border-white inline-block"></span>
+              <span className="text-gray-700 font-medium">Normal waypoint stop</span>
+            </div>
+            <div className="flex items-center space-x-1.5">
+              <span className="w-3 h-3 rounded-full bg-[#dc2626] border border-white inline-block"></span>
+              <span className="text-gray-700 font-medium">Violation / Alert stop</span>
             </div>
             <div className="flex items-center space-x-1.5">
               <span className="w-4 border-b-2 border-dashed border-[#378ADD] inline-block"></span>
               <span className="text-gray-700">Trajectory vector</span>
             </div>
           </>
-        )}
-        {viewMode === 'heatmap' && (
+        ) : viewMode === 'heatmap' ? (
           <>
             <div className="flex items-center space-x-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-red-600 inline-block"></span>
@@ -389,6 +571,11 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
               <span className="text-gray-700">Low</span>
             </div>
           </>
+        ) : (
+          <div className="flex items-center space-x-1.5">
+            <span className="w-3 h-3 rounded-full bg-[#378ADD] border border-white inline-block"></span>
+            <span className="text-gray-700 font-medium">Zone origin & flow corridor</span>
+          </div>
         )}
       </div>
     </div>

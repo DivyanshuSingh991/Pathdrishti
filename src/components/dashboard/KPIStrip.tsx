@@ -30,21 +30,21 @@ export const KPIStrip: React.FC = () => {
       {/* 2. Active Cameras */}
       <div className="bg-white border border-gray-200 rounded p-3 flex flex-col justify-between">
         <div className="flex items-center justify-between text-gray-500 mb-1">
-          <span className="text-xs font-medium text-gray-600">Active cameras</span>
+          <span className="text-xs font-medium text-gray-600">Active ANPR cameras</span>
           <Camera className="w-4 h-4 text-gray-400" />
         </div>
         <div className="flex items-baseline space-x-1.5">
           <span className="text-2xl font-bold font-mono tracking-tight text-gray-900">
-            86/90
+            {stats.activeCamerasCount}/{stats.totalCamerasCount}
           </span>
           <span className="text-[11px] text-emerald-600 font-medium">
-            (95.5%)
+            ({Math.round((stats.activeCamerasCount / Math.max(1, stats.totalCamerasCount)) * 100)}%)
           </span>
         </div>
         <div className="text-[11px] text-gray-500 mt-1 flex items-center justify-between border-t border-gray-100 pt-1">
-          <span>Local sector</span>
-          <span className="font-mono text-gray-700 font-medium">
-            {stats.activeCamerasCount}/{stats.totalCamerasCount} online
+          <span>Grid health</span>
+          <span className="font-mono text-red-600 font-medium">
+            {stats.totalCamerasCount - stats.activeCamerasCount} offline
           </span>
         </div>
       </div>

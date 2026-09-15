@@ -32,6 +32,30 @@ export interface Vehicle {
   };
 }
 
+export interface ReIdFeature {
+  feature: string;
+  similarityPct: number;
+  description: string;
+}
+
+export interface ReIdAnalysis {
+  isReIdMatch: boolean;
+  confidence: number;
+  triggerReason: string;
+  matchedFeatures: ReIdFeature[];
+  anchorCameraId?: string;
+  visualFingerprint: string;
+  aiExplanation: string;
+}
+
+export interface CaptureFrameDetails {
+  laneNumber: number;
+  ambientLighting: 'Daylight' | 'Overcast' | 'Dusk' | 'Night IR';
+  cameraAngle: string;
+  vehicleCropUrl?: string;
+  plateCropUrl?: string;
+}
+
 export interface DetectionEvent {
   id: string;
   plateText: string;
@@ -45,6 +69,8 @@ export interface DetectionEvent {
   vehicleColor: string;
   status: 'Normal' | 'Blacklist match' | 'Cloned plate suspect' | 'Route anomaly';
   violationFlag?: string;
+  reIdAnalysis?: ReIdAnalysis;
+  captureDetails?: CaptureFrameDetails;
 }
 
 export interface Alert {

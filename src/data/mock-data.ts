@@ -108,14 +108,36 @@ export const MOCK_CAMERAS: Camera[] = [
   },
   {
     id: 'CAM-10',
-    name: 'CAM-10, Kanpur Road Toll Plaza',
-    locationName: 'Amausi Airport Highway Checkpost',
-    zone: 'Alambagh',
-    lat: 26.7650,
-    lng: 80.8800,
-    status: 'inactive', // 1 inactive camera for fleet realism
-    speedLimit: 70,
-    directionLabel: 'Southern Border Checkpost'
+    name: 'CAM-10, Vidhan Sabha Marg',
+    locationName: 'Burlington Crossing / Secretariat Corridor',
+    zone: 'Hazratganj',
+    lat: 26.8430,
+    lng: 80.9340,
+    status: 'inactive', // offline for optical sensor maintenance
+    speedLimit: 40,
+    directionLabel: 'Central Secretariat Arterial'
+  },
+  {
+    id: 'CAM-11',
+    name: 'CAM-11, Shaheed Path Medanta',
+    locationName: 'Sector 8 Arjunganj / Medanta Intersection',
+    zone: 'Gomti Nagar',
+    lat: 26.8120,
+    lng: 80.9760,
+    status: 'active',
+    speedLimit: 80,
+    directionLabel: 'Outer Ring Eastbound'
+  },
+  {
+    id: 'CAM-12',
+    name: 'CAM-12, 1090 Riverfront Crossing',
+    locationName: 'Women Power Line 1090 Chauraha',
+    zone: 'Gomti Nagar',
+    lat: 26.8550,
+    lng: 80.9620,
+    status: 'inactive', // offline under network maintenance
+    speedLimit: 50,
+    directionLabel: 'Riverfront - Lohia Path Connector'
   }
 ];
 
@@ -558,10 +580,64 @@ export const generate250DetectionEvents = (): DetectionEvent[] => {
 
   // 2. Structured sequential trail for UP32-KL-5544 (Blacklisted Stolen Vehicle)
   const trailBlacklist = [
-    { camId: 'CAM-07', time: '13:10:00', speed: 32, dir: 'Eastbound' as const, conf: 96.8, vio: undefined },
-    { camId: 'CAM-09', time: '13:40:22', speed: 28, dir: 'Eastbound' as const, conf: 97.4, vio: undefined },
-    { camId: 'CAM-01', time: '14:28:15', speed: 72, dir: 'Northbound' as const, conf: 97.8, vio: 'Overspeeding — 72 km/h in 40 zone' },
-    { camId: 'CAM-04', time: '15:02:40', speed: 54, dir: 'Northeast' as const, conf: 98.2, vio: undefined }
+    {
+      camId: 'CAM-07',
+      time: '13:10:00',
+      speed: 32,
+      dir: 'Eastbound' as const,
+      conf: 96.8,
+      vio: undefined,
+      lane: 1,
+      light: 'Daylight' as const,
+      angle: 'Frontal 15° Angle'
+    },
+    {
+      camId: 'CAM-09',
+      time: '13:40:22',
+      speed: 28,
+      dir: 'Eastbound' as const,
+      conf: 97.4,
+      vio: undefined,
+      lane: 2,
+      light: 'Daylight' as const,
+      angle: 'Rear High-Mount 25°'
+    },
+    {
+      camId: 'CAM-01',
+      time: '14:28:15',
+      speed: 72,
+      dir: 'Northbound' as const,
+      conf: 97.8,
+      vio: 'Overspeeding — 72 km/h in 40 zone',
+      lane: 1,
+      light: 'Daylight' as const,
+      angle: 'Overhead Gantry 30°'
+    },
+    {
+      camId: 'CAM-04',
+      time: '15:02:40',
+      speed: 54,
+      dir: 'Northeast' as const,
+      conf: 52.4, // Low optical OCR due to obscured plate
+      vio: undefined,
+      lane: 3,
+      light: 'Dusk' as const,
+      angle: 'Side-Angle 40°',
+      reId: {
+        isReIdMatch: true,
+        confidence: 97.6,
+        triggerReason: 'License plate partially obscured by dried road mud & severe optical glare (Optical OCR dropped to 52.4%). Visual Re-ID triggered automatically.',
+        anchorCameraId: 'CAM-01',
+        visualFingerprint: 'EMB-512D-VEC#9942A',
+        aiExplanation: 'Vehicle Re-ID model matched 512-dimensional visual embedding vector against anchor capture at CAM-01. Confirmed same physical stolen Hyundai Creta with 97.6% feature similarity despite unreadable plate.',
+        matchedFeatures: [
+          { feature: 'Body Silhouette & Geometry', similarityPct: 98.9, description: '2023 Hyundai Creta roofline curvature, shark-fin antenna & silver roof rails' },
+          { feature: 'Chroma & Paint Signature', similarityPct: 97.4, description: 'Typhoon Silver metallic reflectance spectrum calibrated for dusk lighting' },
+          { feature: 'Distinctive Visual Markers', similarityPct: 96.1, description: 'Scuff mark on lower rear bumper & dual-tone alloy rim spoke profile' },
+          { feature: 'Spatial-Temporal Motion Feasibility', similarityPct: 99.4, description: '34 min transit elapsed from CAM-01 (7.8 km corridor @ 54 km/h avg speed)' }
+        ]
+      }
+    }
   ];
   trailBlacklist.forEach((step, idx) => {
     events.push({
@@ -576,16 +652,95 @@ export const generate250DetectionEvents = (): DetectionEvent[] => {
       vehicleType: 'car',
       vehicleColor: 'Silver',
       status: 'Blacklist match',
-      violationFlag: step.vio
+      violationFlag: step.vio,
+      reIdAnalysis: step.reId,
+      captureDetails: {
+        laneNumber: step.lane,
+        ambientLighting: step.light,
+        cameraAngle: step.angle
+      }
     });
   });
 
   // 3. Structured sequential trail for UP32-EX-4091 (Cloned Plate suspect)
   const trailCloned = [
-    { camId: 'CAM-01', time: '14:11:00', speed: 35, dir: 'Northbound' as const, conf: 97.9, col: 'White', type: 'car' as const, status: 'Cloned plate suspect' as const },
-    { camId: 'CAM-06', time: '14:15:30', speed: 84, dir: 'Southbound' as const, conf: 98.2, col: 'Red', type: 'car' as const, status: 'Cloned plate suspect' as const },
-    { camId: 'CAM-03', time: '14:50:12', speed: 62, dir: 'Eastbound' as const, conf: 99.0, col: 'White', type: 'car' as const, status: 'Cloned plate suspect' as const },
-    { camId: 'CAM-08', time: '15:25:00', speed: 49, dir: 'Northbound' as const, conf: 98.5, col: 'Red', type: 'car' as const, status: 'Cloned plate suspect' as const }
+    {
+      camId: 'CAM-01',
+      time: '14:11:00',
+      speed: 35,
+      dir: 'Northbound' as const,
+      conf: 97.9,
+      col: 'White',
+      type: 'car' as const,
+      status: 'Cloned plate suspect' as const,
+      lane: 1,
+      light: 'Daylight' as const,
+      angle: 'Overhead Gantry'
+    },
+    {
+      camId: 'CAM-06',
+      time: '14:15:30',
+      speed: 84,
+      dir: 'Southbound' as const,
+      conf: 98.2,
+      col: 'Red',
+      type: 'car' as const,
+      status: 'Cloned plate suspect' as const,
+      lane: 2,
+      light: 'Daylight' as const,
+      angle: 'Expressway Tower',
+      reId: {
+        isReIdMatch: true,
+        confidence: 99.2,
+        triggerReason: 'High-speed simultaneous anomaly: Plate registered to White Sedan observed affixed to Red Hatchback within 4 minutes.',
+        anchorCameraId: 'CAM-01',
+        visualFingerprint: 'CLONE-ANOMALY-DET#3821',
+        aiExplanation: 'AI Re-ID Visual Discrepancy Engine confirmed counterfeit cloned plate. Transit time between CAM-01 and CAM-06 is physically impossible for a single vehicle (requires 380 km/h). 2 separate physical vehicles confirmed in circulation.',
+        matchedFeatures: [
+          { feature: 'Vehicle Body Discrepancy', similarityPct: 14.2, description: 'Severe structural mismatch: 3-Box White Sedan vs 2-Box Red Hatchback' },
+          { feature: 'Color Space Delta', similarityPct: 11.5, description: 'Hex color distance ΔE > 68 (Polar White vs Carmine Red)' },
+          { feature: 'Plate Emboss Forensic', similarityPct: 99.2, description: 'Identical alphanumeric characters embossed with irregular kerning' }
+        ]
+      }
+    },
+    {
+      camId: 'CAM-03',
+      time: '14:50:12',
+      speed: 62,
+      dir: 'Eastbound' as const,
+      conf: 99.0,
+      col: 'White',
+      type: 'car' as const,
+      status: 'Cloned plate suspect' as const,
+      lane: 2,
+      light: 'Daylight' as const,
+      angle: 'Frontal 20°'
+    },
+    {
+      camId: 'CAM-08',
+      time: '15:25:00',
+      speed: 49,
+      dir: 'Northbound' as const,
+      conf: 98.5,
+      col: 'Red',
+      type: 'car' as const,
+      status: 'Cloned plate suspect' as const,
+      lane: 1,
+      light: 'Dusk' as const,
+      angle: 'Ring Road Gantry',
+      reId: {
+        isReIdMatch: true,
+        confidence: 98.8,
+        triggerReason: 'Secondary duplicate vehicle re-appearance on North Ring corridor.',
+        anchorCameraId: 'CAM-06',
+        visualFingerprint: 'REID-RED-HATCH#4419',
+        aiExplanation: 'Visual Re-ID matched Red Hatchback embedding vector from CAM-06 with 98.8% similarity, verifying continuation of the cloned vehicle trajectory.',
+        matchedFeatures: [
+          { feature: 'Red Hatchback Profile', similarityPct: 98.8, description: 'Matched rear spoiler and aftermarket black tinted tail lamps' },
+          { feature: 'Spatial Continuum', similarityPct: 99.1, description: 'Elapsed 69 minutes from CAM-06 matches Shaheed Path transit' }
+        ]
+      }
+    }
   ];
   trailCloned.forEach((step, idx) => {
     events.push({
@@ -599,7 +754,13 @@ export const generate250DetectionEvents = (): DetectionEvent[] => {
       direction: step.dir,
       vehicleType: step.type,
       vehicleColor: step.col,
-      status: step.status
+      status: step.status,
+      reIdAnalysis: step.reId,
+      captureDetails: {
+        laneNumber: step.lane,
+        ambientLighting: step.light,
+        cameraAngle: step.angle
+      }
     });
   });
 

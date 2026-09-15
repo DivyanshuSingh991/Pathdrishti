@@ -94,12 +94,12 @@ export const SelectedDetectionPanel: React.FC<SelectedDetectionPanelProps> = ({
         )}
 
         {vehicle?.isClonedSuspect && (
-          <div className="p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-900">
+          <div className="p-2 bg-red-50 border border-red-200 rounded text-xs text-red-900">
             <div className="font-bold flex items-center space-x-1">
-              <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+              <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
               <span>Suspect plate cloning detected</span>
             </div>
-            <p className="text-[11px] text-amber-800 mt-0.5">{vehicle.clonedNote}</p>
+            <p className="text-[11px] text-red-700 mt-0.5">{vehicle.clonedNote}</p>
           </div>
         )}
 
@@ -144,7 +144,7 @@ export const SelectedDetectionPanel: React.FC<SelectedDetectionPanelProps> = ({
 
           <div className="p-2 bg-gray-50 border border-gray-100 rounded">
             <span className="text-[10px] text-gray-500 block">Speed & Limit</span>
-            <span className={`font-mono font-bold ${isOverspeeding ? 'text-red-700' : 'text-gray-900'}`}>
+            <span className={`font-mono font-bold ${isOverspeeding ? 'text-amber-600' : 'text-gray-900'}`}>
               {detection.speed} km/h{' '}
               <span className="text-[10px] font-normal text-gray-500">
                 (Limit: {camera?.speedLimit} km/h)
