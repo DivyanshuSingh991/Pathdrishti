@@ -524,8 +524,6 @@ export const SearchPage: React.FC = () => {
                           className={`text-[11px] font-bold px-2 py-0.5 rounded uppercase ${
                             vio.violationType === 'overspeeding'
                               ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                              : vio.violationType === 'cloned_plate'
-                              ? 'bg-red-100 text-red-900 border border-red-300'
                               : 'bg-red-100 text-red-800 border border-red-200'
                           }`}
                         >
