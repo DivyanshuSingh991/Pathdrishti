@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { DetectionEvent } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { getCameraById } from '../../data/mock-data';
-import { Search, Filter, CheckCircle, AlertTriangle } from 'lucide-react';
+import { getCameraCaptureForDetection } from '../../utils/cameraImages';
+import { Search, CheckCircle, AlertTriangle, Camera as CameraIcon } from 'lucide-react';
 
 interface RecentDetectionsTableProps {
   onSelectDetection?: (detection: DetectionEvent) => void;
@@ -25,25 +26,39 @@ export const RecentDetectionsTable: React.FC<RecentDetectionsTableProps> = ({
   };
 
   // Filter detections
-  const filteredDetections = detections.filter(d => {
-    const matchesText =
-      d.plateText.toLowerCase().includes(filterText.toLowerCase().trim()) ||
-      d.cameraId.toLowerCase().includes(filterText.toLowerCase().trim()) ||
-      d.vehicleType.toLowerCase().includes(filterText.toLowerCase().trim());
+  const filteredDetections = useMemo(() => {
+    const query = filterText.toLowerCase().trim();
 
-    if (!matchesText) return false;
+    return detections.filter(d => {
+      const matchesText =
+        !query ||
+        d.plateText.toLowerCase().includes(query) ||
+        d.cameraId.toLowerCase().includes(query) ||
+        d.vehicleType.toLowerCase().includes(query) ||
+        (d.violationFlag && d.violationFlag.toLowerCase().includes(query)) ||
+        d.status.toLowerCase().includes(query);
 
-    if (filterType === 'alert') {
-      return d.status !== 'Normal' || !!d.violationFlag;
-    }
-    if (filterType === 'normal') {
-      return d.status === 'Normal' && !d.violationFlag;
-    }
-    return true;
-  });
+      if (!matchesText) return false;
 
-  // Display recent records (descending order by timestamp or sliced)
-  const displayList = [...filteredDetections].reverse().slice(0, limitCount);
+      const hasViolation = Boolean(d.violationFlag);
+      const isAlert = d.status !== 'Normal' || hasViolation;
+
+      if (filterType === 'alert') {
+        return isAlert;
+      }
+      if (filterType === 'normal') {
+        return !isAlert;
+      }
+      return true;
+    });
+  }, [detections, filterText, filterType]);
+
+  // Display recent records (descending order by timestamp)
+  const displayList = useMemo(() => {
+    return [...filteredDetections]
+      .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+      .slice(0, limitCount);
+  }, [filteredDetections, limitCount]);
 
   return (
     <div className="bg-white border border-gray-200 rounded p-3">
@@ -73,7 +88,7 @@ export const RecentDetectionsTable: React.FC<RecentDetectionsTableProps> = ({
 
           <select
             value={filterType}
-            onChange={e => setFilterType(e.target.value as any)}
+            onChange={e => setFilterType(e.target.value as 'all' | 'alert' | 'normal')}
             className="text-xs py-1 px-2 bg-gray-50 border border-gray-200 rounded text-gray-700 focus:outline-none focus:border-[#378ADD]"
           >
             <option value="all">All detections</option>
@@ -101,6 +116,7 @@ export const RecentDetectionsTable: React.FC<RecentDetectionsTableProps> = ({
             <tr className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-200 text-[11px]">
               <th className="py-2 px-2.5">Time</th>
               <th className="py-2 px-2.5">Camera node</th>
+              <th className="py-2 px-2.5">CCTV Capture</th>
               <th className="py-2 px-2.5">Plate number</th>
               <th className="py-2 px-2.5">Vehicle</th>
               <th className="py-2 px-2.5 text-right">Confidence</th>
@@ -113,7 +129,7 @@ export const RecentDetectionsTable: React.FC<RecentDetectionsTableProps> = ({
           <tbody className="divide-y divide-gray-100 font-mono">
             {displayList.length === 0 ? (
               <tr>
-                <td colSpan={9} className="py-6 text-center text-gray-400 text-xs font-sans">
+                <td colSpan={10} className="py-6 text-center text-gray-400 text-xs font-sans">
                   No matching detections found for the applied filter.
                 </td>
               </tr>
@@ -121,8 +137,10 @@ export const RecentDetectionsTable: React.FC<RecentDetectionsTableProps> = ({
               displayList.map(evt => {
                 const cam = getCameraById(evt.cameraId);
                 const isSelected = selectedDetection?.id === evt.id;
-                const isAlert = evt.status !== 'Normal';
-                const hasViolation = !!evt.violationFlag;
+                const hasViolation = Boolean(evt.violationFlag);
+                const isAlert = evt.status !== 'Normal' || hasViolation;
+                const camLocation = cam?.name.split(',')[1]?.trim() || cam?.zone;
+                const capture = getCameraCaptureForDetection(evt);
 
                 return (
                   <tr
@@ -130,21 +148,37 @@ export const RecentDetectionsTable: React.FC<RecentDetectionsTableProps> = ({
                     onClick={() => handleRowClick(evt)}
                     className={`cursor-pointer transition-colors ${
                       isSelected
-                        ? 'bg-blue-50/80 border-l-2 border-l-[#378ADD]'
+                        ? 'bg-blue-50/80 shadow-[inset_3px_0_0_0_#378ADD]'
                         : 'hover:bg-gray-50'
                     }`}
                   >
                     {/* Time */}
-                    <td className="py-1.5 px-2.5 text-gray-700 font-medium">
+                    <td className="py-1.5 px-2.5 text-gray-700 font-medium whitespace-nowrap">
                       {evt.timestamp}
                     </td>
 
                     {/* Camera */}
                     <td className="py-1.5 px-2.5 text-gray-800 font-sans">
                       <span className="font-semibold">{evt.cameraId}</span>
-                      <span className="text-[11px] text-gray-500 ml-1 hidden lg:inline">
-                        ({cam?.name.split(',')[1] || cam?.zone})
-                      </span>
+                      {camLocation && (
+                        <span className="text-[11px] text-gray-500 ml-1 hidden lg:inline">
+                          ({camLocation})
+                        </span>
+                      )}
+                    </td>
+
+                    {/* CCTV Capture Thumbnail */}
+                    <td className="py-1.5 px-2.5">
+                      <div className="relative group/thumb w-12 h-7 bg-black rounded overflow-hidden border border-gray-300 shadow-2xs">
+                        <img
+                          src={capture.imageUrl}
+                          alt="CCTV"
+                          className="w-full h-full object-cover group-hover/thumb:scale-110 transition-transform"
+                        />
+                        <span className="absolute bottom-0 right-0 bg-black/75 text-[8px] text-cyan-300 px-0.5 font-mono leading-none">
+                          CAM
+                        </span>
+                      </div>
                     </td>
 
                     {/* Plate */}
@@ -161,7 +195,7 @@ export const RecentDetectionsTable: React.FC<RecentDetectionsTableProps> = ({
 
                     {/* Confidence */}
                     <td className="py-1.5 px-2.5 text-right text-gray-700">
-                      {evt.confidence.toFixed(1)}%
+                      {(evt.confidence ?? 0).toFixed(1)}%
                     </td>
 
                     {/* Speed */}
@@ -179,12 +213,12 @@ export const RecentDetectionsTable: React.FC<RecentDetectionsTableProps> = ({
                     <td className="py-1.5 px-2.5 font-sans">
                       {isAlert ? (
                         <span className="inline-flex items-center space-x-1 text-[11px] bg-red-50 text-red-700 px-1.5 py-0.5 rounded font-semibold border border-red-200">
-                          <AlertTriangle className="w-3 h-3 text-red-600" />
-                          <span>{evt.status}</span>
+                          <AlertTriangle className="w-3 h-3 text-red-600 shrink-0" />
+                          <span>{evt.status !== 'Normal' ? evt.status : 'Violation Flagged'}</span>
                         </span>
                       ) : (
                         <span className="inline-flex items-center space-x-1 text-[11px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-medium border border-emerald-200">
-                          <CheckCircle className="w-3 h-3 text-emerald-600" />
+                          <CheckCircle className="w-3 h-3 text-emerald-600 shrink-0" />
                           <span>Normal</span>
                         </span>
                       )}
@@ -193,7 +227,10 @@ export const RecentDetectionsTable: React.FC<RecentDetectionsTableProps> = ({
                     {/* Violation Flag */}
                     <td className="py-1.5 px-2.5 font-sans text-[11px]">
                       {hasViolation ? (
-                        <span className="text-red-700 font-semibold bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
+                        <span
+                          title={evt.violationFlag}
+                          className="text-red-700 font-semibold bg-red-50 px-1.5 py-0.5 rounded border border-red-200 inline-block max-w-[200px] truncate align-middle"
+                        >
                           {evt.violationFlag}
                         </span>
                       ) : (

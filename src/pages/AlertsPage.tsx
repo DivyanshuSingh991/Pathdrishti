@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { getCameraById } from '../data/mock-data';
-import { Alert, Violation } from '../types';
+import { Alert, Violation, DetectionEvent } from '../types';
+import { CameraCaptureView } from '../components/dashboard/CameraCaptureView';
+import { getCameraCaptureForDetection } from '../utils/cameraImages';
 import {
   AlertTriangle,
   ShieldAlert,
@@ -13,7 +15,9 @@ import {
   ArrowUpRight,
   EyeOff,
   RefreshCw,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Camera as CameraIcon,
+  X
 } from 'lucide-react';
 
 // Combined item representation for unified control room alert/violation stream
@@ -50,6 +54,7 @@ export const AlertsPage: React.FC = () => {
   const [filterType, setFilterType] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<'unreviewed' | 'all' | 'reviewed'>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [previewDetection, setPreviewDetection] = useState<DetectionEvent | null>(null);
 
   // Combine alerts and violations into a unified feed
   const combinedFeed: FeedItem[] = [
@@ -321,6 +326,7 @@ export const AlertsPage: React.FC = () => {
                 <tr className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-200 text-[11px]">
                   <th className="py-2.5 px-3">Type badge</th>
                   <th className="py-2.5 px-3">Plate number</th>
+                  <th className="py-2.5 px-3">CCTV Evidence</th>
                   <th className="py-2.5 px-3">Camera & location</th>
                   <th className="py-2.5 px-3">Timestamp</th>
                   <th className="py-2.5 px-3">Measured / Confidence</th>
@@ -334,6 +340,22 @@ export const AlertsPage: React.FC = () => {
                     item.kind === 'alert'
                       ? getCameraById(item.data.cameraId)
                       : getCameraById(item.data.cameraId);
+
+                  const synthEvent: DetectionEvent = {
+                    id: item.id,
+                    plateText: item.plate,
+                    cameraId: item.kind === 'alert' ? item.data.cameraId : item.data.cameraId,
+                    timestamp: item.timestamp,
+                    dateTime: `2026-08-30 ${item.timestamp}`,
+                    confidence: item.kind === 'alert' ? item.data.confidence : 98.2,
+                    speed: item.kind === 'violation' && item.data.violationType === 'overspeeding' ? 72 : 38,
+                    direction: 'Northbound',
+                    vehicleType: 'car',
+                    vehicleColor: 'Silver',
+                    status: item.kind === 'alert' ? 'Blacklist match' : 'Normal',
+                    violationFlag: item.kind === 'violation' ? `${item.data.violationType.replace(/_/g, ' ')} — ${item.data.measuredValue}` : undefined
+                  };
+                  const capture = getCameraCaptureForDetection(synthEvent);
 
                   return (
                     <tr
@@ -361,18 +383,37 @@ export const AlertsPage: React.FC = () => {
                         </button>
                       </td>
 
-                      {/* 3. Camera & Location */}
+                      {/* 3. CCTV Evidence Snapshot */}
+                      <td className="py-2.5 px-3">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewDetection(synthEvent)}
+                          className="relative group/thumb w-14 h-8 bg-black rounded overflow-hidden border border-gray-300 shadow-2xs hover:ring-2 hover:ring-blue-500 transition-all block cursor-pointer"
+                          title="Click to view full CCTV camera evidence snapshot"
+                        >
+                          <img
+                            src={capture.imageUrl}
+                            alt="CCTV Evidence"
+                            className="w-full h-full object-cover group-hover/thumb:scale-110 transition-transform"
+                          />
+                          <span className="absolute bottom-0 right-0 bg-red-600/90 text-white text-[7px] font-mono px-0.5 leading-none">
+                            CCTV
+                          </span>
+                        </button>
+                      </td>
+
+                      {/* 4. Camera & Location */}
                       <td className="py-2.5 px-3 text-gray-800 whitespace-nowrap">
                         <div className="font-semibold">{cam?.name || (item.kind === 'alert' ? item.data.cameraId : item.data.cameraId)}</div>
                         <div className="text-[11px] text-gray-500">{cam?.locationName}</div>
                       </td>
 
-                      {/* 4. Timestamp */}
+                      {/* 5. Timestamp */}
                       <td className="py-2.5 px-3 text-gray-700 font-mono whitespace-nowrap">
                         {item.timestamp} IST
                       </td>
 
-                      {/* 5. Confidence or Measured Value */}
+                      {/* 6. Confidence or Measured Value */}
                       <td className="py-2.5 px-3 whitespace-nowrap">
                         {item.kind === 'alert' ? (
                           <span className="font-mono text-gray-800">
@@ -390,7 +431,7 @@ export const AlertsPage: React.FC = () => {
                         )}
                       </td>
 
-                      {/* 6. Incident Details */}
+                      {/* 7. Incident Details */}
                       <td className="py-2.5 px-3 text-gray-700 max-w-xs text-[11px] leading-relaxed">
                         {item.kind === 'alert' ? (
                           <span>{item.data.details}</span>
@@ -401,7 +442,7 @@ export const AlertsPage: React.FC = () => {
                         )}
                       </td>
 
-                      {/* 7. Action Button: Mark reviewed */}
+                      {/* 8. Action Button: Mark reviewed */}
                       <td className="py-2.5 px-3 text-right whitespace-nowrap">
                         <button
                           onClick={() => {
@@ -430,6 +471,36 @@ export const AlertsPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* CCTV Evidence Modal */}
+      {previewDetection && (
+        <div className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full overflow-hidden border border-gray-300 flex flex-col">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-200 bg-gray-50">
+              <div className="flex items-center gap-2">
+                <CameraIcon className="w-4 h-4 text-cyan-600" />
+                <span className="font-bold text-xs uppercase tracking-wider font-mono text-gray-900">
+                  Surveillance Camera Evidence — {previewDetection.cameraId} ({previewDetection.plateText})
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewDetection(null)}
+                className="p-1 text-gray-400 hover:text-gray-700 rounded hover:bg-gray-200 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-4 bg-gray-100/50">
+              <CameraCaptureView
+                detection={previewDetection}
+                camera={getCameraById(previewDetection.cameraId)}
+                showControls={true}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

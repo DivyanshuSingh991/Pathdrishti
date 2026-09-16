@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { DetectionEvent } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { getCameraById, getVehicleByPlate } from '../../data/mock-data';
+import { CameraCaptureView } from './CameraCaptureView';
 import {
   Car,
   Camera,
@@ -80,6 +81,18 @@ export const SelectedDetectionPanel: React.FC<SelectedDetectionPanelProps> = ({
               </span>
             )}
           </div>
+        </div>
+
+        {/* Real CCTV Camera Capture & Plate Crop */}
+        <div>
+          <div className="text-[10px] font-bold text-gray-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+            <span className="flex items-center gap-1">
+              <Camera className="w-3.5 h-3.5 text-cyan-600" />
+              Surveillance Camera Capture
+            </span>
+            <span className="text-gray-400 font-mono text-[10px]">LKO-ANPR-FEED</span>
+          </div>
+          <CameraCaptureView detection={detection} camera={camera} />
         </div>
 
         {/* Special Warnings if Blacklisted / Cloned / Near-miss */}

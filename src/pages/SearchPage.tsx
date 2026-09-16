@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { LeafletMap } from '../components/map/LeafletMap';
 import { getCameraById, getVehicleByPlate } from '../data/mock-data';
+import { CameraCaptureView } from '../components/dashboard/CameraCaptureView';
 import {
   Search,
   MapPin,
@@ -15,7 +16,10 @@ import {
   ArrowRight,
   ShieldCheck,
   Zap,
-  Info
+  Info,
+  Camera as CameraIcon,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 export const SearchPage: React.FC = () => {
@@ -29,6 +33,7 @@ export const SearchPage: React.FC = () => {
   const [activePlate, setActivePlate] = useState<string>(
     queryPlateParam || selectedPlate || 'UP32-KL-5544'
   );
+  const [expandedStopId, setExpandedStopId] = useState<string | null>(null);
 
   useEffect(() => {
     if (queryPlateParam) {
@@ -327,6 +332,31 @@ export const SearchPage: React.FC = () => {
                             {evt.violationFlag}
                           </div>
                         )}
+
+                        {/* CCTV Camera Snapshot Action & Frame */}
+                        <div className="mt-2 pt-2 border-t border-gray-200">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedStopId(expandedStopId === evt.id ? null : evt.id)}
+                            className="w-full py-1 px-2 bg-white hover:bg-gray-100 border border-gray-300 rounded text-[11px] font-medium text-gray-700 flex items-center justify-between transition-colors"
+                          >
+                            <span className="flex items-center gap-1.5 font-mono text-[10px] text-cyan-700 font-bold">
+                              <CameraIcon className="w-3.5 h-3.5 text-cyan-600" />
+                              {expandedStopId === evt.id ? 'Hide CCTV Camera Snapshot' : 'View CCTV Camera Snapshot'}
+                            </span>
+                            {expandedStopId === evt.id ? (
+                              <ChevronUp className="w-3.5 h-3.5 text-gray-500" />
+                            ) : (
+                              <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
+                            )}
+                          </button>
+
+                          {expandedStopId === evt.id && (
+                            <div className="mt-2 animate-in fade-in duration-200">
+                              <CameraCaptureView detection={evt} camera={cam} showControls={true} />
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );

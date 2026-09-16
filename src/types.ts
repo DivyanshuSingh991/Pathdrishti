@@ -45,6 +45,10 @@ export interface DetectionEvent {
   vehicleColor: string;
   status: 'Normal' | 'Blacklist match' | 'Cloned plate suspect' | 'Route anomaly';
   violationFlag?: string;
+  imageUrl?: string;
+  plateCropUrl?: string;
+  lane?: string;
+  cameraAngle?: 'front' | 'rear';
 }
 
 export interface Alert {
