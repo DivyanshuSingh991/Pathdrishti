@@ -14,6 +14,8 @@ import {
   Maximize2
 } from 'lucide-react';
 
+import { getCameraCaptureForDetection } from '../../utils/cameraImages';
+
 interface TrajectoryCaptureGalleryProps {
   events: DetectionEvent[];
   plate: string;
@@ -28,64 +30,50 @@ export const TrajectoryCaptureGallery: React.FC<TrajectoryCaptureGalleryProps> =
     return null;
   }
 
-  // Consistent, authentic single vehicle photograph per vehicle identity
+  // Consistent, authentic single vehicle photograph per vehicle identity from JS_1 dataset
   const getConsistentVehicleImage = (evt: DetectionEvent) => {
     const plate = evt.plateText.toUpperCase();
     const type = evt.vehicleType;
     const color = evt.vehicleColor.toLowerCase();
 
     // 1. Blacklisted Stolen Hyundai Creta / Silver SUV (UP32-KL-5544)
-    if (plate.includes('KL-5544') || (type === 'car' && color.includes('silver'))) {
-      return 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=700&auto=format&fit=crop&q=80';
+    if (plate.includes('KL-5544') || (type === 'car' && (color.includes('silver') || color.includes('grey')) && !plate.includes('LK-90'))) {
+      return '/captures/creta_silver_cam01.jpg';
     }
 
-    // 2. Cloned Plate suspect (UP32-EX-4091)
+    // 2. Near-miss / Wanted Dark Grey Scorpio (UP32-LK-9021 / UP32-LK-9027)
+    if (plate.includes('LK-9021') || plate.includes('LK-9027')) {
+      return '/captures/scorpio_grey_cam07.jpg';
+    }
+
+    // 3. Cloned Plate suspect / White Sedan (UP32-EX-4091) -> Always same White Honda City
     if (plate.includes('EX-4091')) {
-      // Sighting on White Sedan vs Sighting on Red Hatchback
-      if (color.includes('white')) {
-        return 'https://images.unsplash.com/photo-1617788138017-80ad40651399?w=700&auto=format&fit=crop&q=80';
-      } else {
-        return 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=700&auto=format&fit=crop&q=80';
-      }
+      return '/captures/honda_city_white_cam04.jpg';
     }
 
-    // 3. Near-miss / Wanted Dark Grey Scorpio (UP32-LK-9021 / UP32-LK-9027)
-    if (plate.includes('LK-9021') || plate.includes('LK-9027') || color.includes('grey') || color.includes('dark')) {
-      return 'https://images.unsplash.com/photo-1519245659620-e859806a8d3b?w=700&auto=format&fit=crop&q=80';
-    }
-
-    // 4. White car / Swift (UP32-AB-1234)
-    if (color.includes('white')) {
-      return 'https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?w=700&auto=format&fit=crop&q=80';
+    // 4. White car / Swift / Honda City (UP32-AB-1234)
+    if (color.includes('white') || plate.includes('AB-1234')) {
+      return '/captures/honda_city_white_cam04.jpg';
     }
 
     // 5. Blue car / SUV (UP32-TR-9900)
-    if (color.includes('blue')) {
-      return 'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=700&auto=format&fit=crop&q=80';
+    if (color.includes('blue') || plate.includes('TR-9900')) {
+      return '/captures/seltos_blue_cam06.jpg';
     }
 
-    // 6. Red car
-    if (color.includes('red')) {
-      return 'https://images.unsplash.com/photo-1508974239320-0a029497e820?w=700&auto=format&fit=crop&q=80';
+    // 6. Black / Dark SUV (UP32-ZZ-0007)
+    if (color.includes('black') || plate.includes('ZZ-0007')) {
+      return '/captures/fortuner_black_cam03.jpg';
     }
 
-    // 7. Motorcycle
-    if (type === 'bike') {
-      return 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=700&auto=format&fit=crop&q=80';
+    // 7. Auto-rickshaw (UP32-BN-8822)
+    if (type === 'auto' || plate.includes('BN-8822')) {
+      return '/captures/auto_rickshaw_cam09.jpg';
     }
 
-    // 8. Commercial Truck
-    if (type === 'truck') {
-      return 'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?w=700&auto=format&fit=crop&q=80';
-    }
-
-    // 9. Auto-rickshaw
-    if (type === 'auto') {
-      return 'https://images.unsplash.com/photo-1596178065887-1198b6148b2b?w=700&auto=format&fit=crop&q=80';
-    }
-
-    // Fallback consistent car
-    return 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=700&auto=format&fit=crop&q=80';
+    // Fallback through JS_1 camera images helper
+    const capture = getCameraCaptureForDetection(evt);
+    return capture?.imageUrl || '/captures/creta_silver_cam01.jpg';
   };
 
   // Simulates realistic camera angle / crop variations of the EXACT SAME physical car
@@ -186,8 +174,8 @@ export const TrajectoryCaptureGallery: React.FC<TrajectoryCaptureGalleryProps> =
                 {/* CCTV Surveillance Lighting / Vignette Overlay */}
                 <div
                   className={`absolute inset-0 pointer-events-none ${
-                    hasReId && evt.confidence < 70
-                      ? 'bg-gradient-to-t from-black/90 via-purple-950/20 to-black/60'
+                    hasReId
+                      ? 'bg-gradient-to-t from-black/90 via-purple-950/25 to-black/60'
                       : 'bg-gradient-to-t from-black/85 via-transparent to-black/60'
                   }`}
                 />
@@ -204,7 +192,7 @@ export const TrajectoryCaptureGallery: React.FC<TrajectoryCaptureGalleryProps> =
                 {/* AI Target Detection Crosshair Bounding Box */}
                 <div
                   className={`absolute inset-x-2 inset-y-3 border pointer-events-none rounded-xs flex items-center justify-center ${
-                    hasReId ? 'border-purple-400/80' : 'border-emerald-400/70'
+                    hasReId ? 'border-purple-400/90 shadow-[0_0_8px_rgba(168,85,247,0.4)]' : 'border-emerald-400/70'
                   }`}
                 >
                   <span
@@ -227,21 +215,59 @@ export const TrajectoryCaptureGallery: React.FC<TrajectoryCaptureGalleryProps> =
                       hasReId ? 'border-purple-400' : 'border-emerald-400'
                     }`}
                   ></span>
+
+                  {/* If Re-ID: Body Landmark Scanner Tag */}
+                  {hasReId && (
+                    <span className="absolute top-0.5 left-0.5 text-[7px] font-mono font-bold bg-purple-900/90 text-purple-200 px-1 py-0.2 rounded border border-purple-400/60">
+                      BODY RE-ID {evt.reIdAnalysis?.confidence}%
+                    </span>
+                  )}
                 </div>
+
+                {/* Simulated Mud / Glare / Motion Blur Occlusion directly over the vehicle plate area */}
+                {hasReId && (
+                  <div
+                    className="absolute bottom-5 left-1/2 -translate-x-1/2 w-14 h-4.5 rounded backdrop-blur-[4px] bg-amber-950/60 border border-amber-500/80 shadow-[0_0_10px_rgba(245,158,11,0.6)] flex items-center justify-center overflow-hidden z-10"
+                    title="License plate unreadable due to mud spray and glare occlusion"
+                  >
+                    <div className="text-[6.5px] font-mono text-amber-200 font-bold tracking-tighter filter blur-[0.6px] select-none line-through">
+                      UP32·??·????
+                    </div>
+                    {/* Simulated mud and dirt texture */}
+                    <div className="absolute inset-0 bg-gradient-to-tr from-amber-900/80 via-yellow-800/40 to-amber-950/90 mix-blend-color-burn pointer-events-none"></div>
+                    <span className="absolute -top-0.5 -right-0.5 text-[6px] bg-red-600 text-white font-black px-0.5 rounded-2xs">
+                      BLUR
+                    </span>
+                  </div>
+                )}
 
                 {/* Bottom Number Plate Cutout Box */}
                 <div className="absolute bottom-0.5 left-0.5 right-0.5 bg-black/90 border border-gray-700/80 rounded px-1 py-0.2 flex items-center justify-between text-[8px] backdrop-blur-xs z-10">
-                  <span className="font-mono font-bold text-white tracking-wider truncate text-[9px]">
-                    {evt.plateText}
-                  </span>
+                  {hasReId ? (
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center space-x-0.5 truncate">
+                        <span className="text-[6px] bg-amber-500 text-black font-extrabold px-0.5 rounded-2xs">
+                          MUD/BLUR
+                        </span>
+                        <span className="font-mono font-bold text-gray-400 tracking-tight text-[8px] line-through">
+                          UP32-??-????
+                        </span>
+                      </div>
+                      <span className="font-mono text-[7.5px] font-bold text-purple-300">
+                        Re-ID {evt.reIdAnalysis?.confidence}%
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="font-mono font-bold text-white tracking-wider truncate text-[9px]">
+                        {evt.plateText}
+                      </span>
 
-                  <span
-                    className={`font-mono text-[8px] font-bold ${
-                      hasReId && evt.confidence < 70 ? 'text-amber-400' : 'text-emerald-400'
-                    }`}
-                  >
-                    {hasReId && evt.confidence < 70 ? 'Obscured' : `${evt.confidence}%`}
-                  </span>
+                      <span className="font-mono text-[8px] font-bold text-emerald-400">
+                        {evt.confidence}%
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -250,7 +276,7 @@ export const TrajectoryCaptureGallery: React.FC<TrajectoryCaptureGalleryProps> =
                 {hasReId ? (
                   <span className="inline-flex items-center space-x-0.5 text-purple-900 bg-purple-100 font-bold px-1 py-0.2 rounded text-[8px] border border-purple-200">
                     <Sparkles className="w-2 h-2 text-purple-700 animate-pulse" />
-                    <span>Re-ID {evt.reIdAnalysis?.confidence}%</span>
+                    <span>AI Re-ID Verified ({evt.reIdAnalysis?.confidence}%)</span>
                   </span>
                 ) : (
                   <span className="text-gray-600 truncate text-[8px] font-medium">
@@ -313,31 +339,85 @@ export const TrajectoryCaptureGallery: React.FC<TrajectoryCaptureGalleryProps> =
                   <div
                     className={`absolute inset-x-12 inset-y-8 border-2 rounded flex items-center justify-center pointer-events-none ${
                       selectedInspectionEvent.reIdAnalysis?.isReIdMatch
-                        ? 'border-purple-400'
+                        ? 'border-purple-400/90 shadow-[0_0_15px_rgba(168,85,247,0.5)]'
                         : 'border-emerald-400/80'
                     }`}
                   >
                     <span
                       className={`absolute top-2 left-2 text-[10px] font-mono px-1.5 py-0.5 rounded border ${
                         selectedInspectionEvent.reIdAnalysis?.isReIdMatch
-                          ? 'bg-purple-950/90 text-purple-300 border-purple-500/60'
+                          ? 'bg-purple-950/95 text-purple-200 border-purple-400 font-bold'
                           : 'bg-emerald-950/90 text-emerald-300 border-emerald-500/60'
                       }`}
                     >
                       TARGET #892 · {selectedInspectionEvent.vehicleColor.toUpperCase()} {selectedInspectionEvent.vehicleType.toUpperCase()}
+                      {selectedInspectionEvent.reIdAnalysis?.isReIdMatch && ` · RE-ID ${selectedInspectionEvent.reIdAnalysis.confidence}%`}
                     </span>
+
+                    {/* If Re-ID: Landmark Sub-Bounding Boxes on car body */}
+                    {selectedInspectionEvent.reIdAnalysis?.isReIdMatch && (
+                      <>
+                        {/* 1. Roofline landmark */}
+                        <div className="absolute top-3 right-6 border border-purple-400/70 bg-purple-500/20 px-1 py-0.5 text-[8px] font-mono text-purple-200 rounded">
+                          Roof Rails & Silhouette (98.9%)
+                        </div>
+
+                        {/* 2. Paint signature landmark */}
+                        <div className="absolute top-1/2 left-4 border border-purple-400/70 bg-purple-500/20 px-1 py-0.5 text-[8px] font-mono text-purple-200 rounded">
+                          Metallic Paint Chroma (97.4%)
+                        </div>
+
+                        {/* 3. Wheel Rim profile */}
+                        <div className="absolute bottom-2 left-6 border border-purple-400/70 bg-purple-500/20 px-1 py-0.5 text-[8px] font-mono text-purple-200 rounded">
+                          Alloy Spokes (96.1%)
+                        </div>
+                      </>
+                    )}
                   </div>
+
+                  {/* Physical Mud / Glare / Occlusion Filter over License Plate in Modal */}
+                  {selectedInspectionEvent.reIdAnalysis?.isReIdMatch && (
+                    <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-32 h-10 rounded-md backdrop-blur-[6px] bg-amber-950/70 border-2 border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.8)] flex flex-col items-center justify-center p-1 z-20">
+                      <div className="text-[10px] font-mono text-amber-200 font-black tracking-wider filter blur-[0.8px] line-through select-none">
+                        UP32·??·????
+                      </div>
+                      <div className="text-[8px] font-mono text-white bg-red-600/90 px-1 rounded font-bold uppercase tracking-wider mt-0.5 shadow">
+                        ⚠️ OCR Obscured (Mud/Glare)
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Bottom Cutout Banner */}
                 <div className="p-2.5 bg-black/95 border-t border-gray-800 flex items-center justify-between font-mono">
-                  <div className="flex items-center space-x-2">
-                    <span className="bg-yellow-400 text-black text-xs font-bold px-1.5 py-0.5 rounded-xs">IND</span>
-                    <span className="text-sm font-bold tracking-widest text-white">{selectedInspectionEvent.plateText}</span>
-                  </div>
-                  <div className="text-xs text-emerald-400">
-                    Confidence: <strong>{selectedInspectionEvent.confidence}%</strong> · Speed: <strong>{selectedInspectionEvent.speed} km/h</strong>
-                  </div>
+                  {selectedInspectionEvent.reIdAnalysis?.isReIdMatch ? (
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center space-x-2">
+                        <span className="bg-amber-500 text-black text-xs font-bold px-1.5 py-0.5 rounded-xs">
+                          OCR OBSCURED
+                        </span>
+                        <span className="text-sm font-bold tracking-widest text-gray-400 line-through">
+                          UP32-??-????
+                        </span>
+                        <span className="text-xs text-purple-300 font-semibold">
+                          ➔ Resolved: <strong className="text-white">{selectedInspectionEvent.plateText}</strong>
+                        </span>
+                      </div>
+                      <div className="text-xs text-purple-400 font-bold">
+                        AI Re-ID Confidence: <strong>{selectedInspectionEvent.reIdAnalysis.confidence}%</strong>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center space-x-2">
+                        <span className="bg-yellow-400 text-black text-xs font-bold px-1.5 py-0.5 rounded-xs">IND</span>
+                        <span className="text-sm font-bold tracking-widest text-white">{selectedInspectionEvent.plateText}</span>
+                      </div>
+                      <div className="text-xs text-emerald-400">
+                        Confidence: <strong>{selectedInspectionEvent.confidence}%</strong> · Speed: <strong>{selectedInspectionEvent.speed} km/h</strong>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 

@@ -662,7 +662,7 @@ export const generate250DetectionEvents = (): DetectionEvent[] => {
     });
   });
 
-  // 3. Structured sequential trail for UP32-EX-4091 (Cloned Plate suspect)
+  // 3. Structured sequential trail for UP32-EX-4091 (White Sedan)
   const trailCloned = [
     {
       camId: 'CAM-01',
@@ -682,8 +682,8 @@ export const generate250DetectionEvents = (): DetectionEvent[] => {
       time: '14:15:30',
       speed: 84,
       dir: 'Southbound' as const,
-      conf: 98.2,
-      col: 'Red',
+      conf: 44.2,
+      col: 'White',
       type: 'car' as const,
       status: 'Cloned plate suspect' as const,
       lane: 2,
@@ -691,15 +691,15 @@ export const generate250DetectionEvents = (): DetectionEvent[] => {
       angle: 'Expressway Tower',
       reId: {
         isReIdMatch: true,
-        confidence: 99.2,
-        triggerReason: 'High-speed simultaneous anomaly: Plate registered to White Sedan observed affixed to Red Hatchback within 4 minutes.',
+        confidence: 98.4,
+        triggerReason: 'Heavy road-spray & mud splatter on rear plate caused OCR unreadability (44.2% confidence). AI Vehicle Re-ID triggered to identify vehicle.',
         anchorCameraId: 'CAM-01',
-        visualFingerprint: 'CLONE-ANOMALY-DET#3821',
-        aiExplanation: 'AI Re-ID Visual Discrepancy Engine confirmed counterfeit cloned plate. Transit time between CAM-01 and CAM-06 is physically impossible for a single vehicle (requires 380 km/h). 2 separate physical vehicles confirmed in circulation.',
+        visualFingerprint: 'REID-HONDA-WHITE#8841',
+        aiExplanation: '512D visual embedding vector matched anchor capture at CAM-01 with 98.4% confidence. Confirmed same physical White Honda City.',
         matchedFeatures: [
-          { feature: 'Vehicle Body Discrepancy', similarityPct: 14.2, description: 'Severe structural mismatch: 3-Box White Sedan vs 2-Box Red Hatchback' },
-          { feature: 'Color Space Delta', similarityPct: 11.5, description: 'Hex color distance ΔE > 68 (Polar White vs Carmine Red)' },
-          { feature: 'Plate Emboss Forensic', similarityPct: 99.2, description: 'Identical alphanumeric characters embossed with irregular kerning' }
+          { feature: 'White Sedan Silhouette', similarityPct: 98.9, description: 'Honda City 3-box sedan roofline, antenna & door handles' },
+          { feature: 'Taffeta White Paint Chroma', similarityPct: 97.8, description: 'Clear white metallic spectral reflectance profile' },
+          { feature: 'Rear Spoiler & Alloy Design', similarityPct: 96.5, description: 'Diamond cut multi-spoke alloy wheels & LED tail lamp signature' }
         ]
       }
     },
@@ -722,24 +722,12 @@ export const generate250DetectionEvents = (): DetectionEvent[] => {
       speed: 49,
       dir: 'Northbound' as const,
       conf: 98.5,
-      col: 'Red',
+      col: 'White',
       type: 'car' as const,
       status: 'Cloned plate suspect' as const,
       lane: 1,
       light: 'Dusk' as const,
-      angle: 'Ring Road Gantry',
-      reId: {
-        isReIdMatch: true,
-        confidence: 98.8,
-        triggerReason: 'Secondary duplicate vehicle re-appearance on North Ring corridor.',
-        anchorCameraId: 'CAM-06',
-        visualFingerprint: 'REID-RED-HATCH#4419',
-        aiExplanation: 'Visual Re-ID matched Red Hatchback embedding vector from CAM-06 with 98.8% similarity, verifying continuation of the cloned vehicle trajectory.',
-        matchedFeatures: [
-          { feature: 'Red Hatchback Profile', similarityPct: 98.8, description: 'Matched rear spoiler and aftermarket black tinted tail lamps' },
-          { feature: 'Spatial Continuum', similarityPct: 99.1, description: 'Elapsed 69 minutes from CAM-06 matches Shaheed Path transit' }
-        ]
-      }
+      angle: 'Ring Road Gantry'
     }
   ];
   trailCloned.forEach((step, idx) => {

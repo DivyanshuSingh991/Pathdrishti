@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { DetectionEvent } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { getCameraById, getVehicleByPlate } from '../../data/mock-data';
+import { CameraCaptureView } from './CameraCaptureView';
 import {
   Car,
   Camera,
@@ -81,6 +82,22 @@ export const SelectedDetectionPanel: React.FC<SelectedDetectionPanelProps> = ({
             )}
           </div>
         </div>
+
+        {/* Real CCTV Camera Capture & Plate Crop — ONLY for Blacklisted Vehicles */}
+        {(vehicle?.isBlacklisted || detection.status === 'Blacklist match') && (
+          <div>
+            <div className="text-[10px] font-bold text-red-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1">
+                <Camera className="w-3.5 h-3.5 text-red-600" />
+                Blacklisted Target Camera Capture
+              </span>
+              <span className="text-red-500 font-mono text-[10px] bg-red-50 px-1.5 py-0.2 rounded border border-red-200">
+                CRIME-LOOKOUT-MATCH
+              </span>
+            </div>
+            <CameraCaptureView detection={detection} camera={camera} />
+          </div>
+        )}
 
         {/* Special Warnings if Blacklisted / Cloned / Near-miss */}
         {vehicle?.isBlacklisted && (
