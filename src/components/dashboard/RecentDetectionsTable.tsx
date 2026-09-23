@@ -193,13 +193,7 @@ export const RecentDetectionsTable: React.FC<RecentDetectionsTableProps> = ({
                     {/* Violation Flag */}
                     <td className="py-1.5 px-2.5 font-sans text-[11px]">
                       {hasViolation ? (
-                        <span
-                          className={`font-semibold px-1.5 py-0.5 rounded border ${
-                            evt.violationFlag?.toLowerCase().includes('overspeeding')
-                              ? 'text-amber-900 bg-amber-50 border-amber-300'
-                              : 'text-red-700 bg-red-50 border-red-200'
-                          }`}
-                        >
+                        <span className="font-semibold px-1.5 py-0.5 rounded border text-red-700 bg-red-50 border-red-200">
                           {evt.violationFlag}
                         </span>
                       ) : (

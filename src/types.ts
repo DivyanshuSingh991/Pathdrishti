@@ -2,7 +2,7 @@ export type VehicleType = 'car' | 'truck' | 'bike' | 'auto';
 
 export type AlertType = 'blacklist_match' | 'cloned_plate' | 'route_anomaly' | 'loitering';
 
-export type ViolationType = 'overspeeding' | 'red_light_jump' | 'wrong_way' | 'no_entry_zone';
+export type ViolationType = 'red_light_jump' | 'wrong_way' | 'no_entry_zone';
 
 export interface Camera {
   id: string;

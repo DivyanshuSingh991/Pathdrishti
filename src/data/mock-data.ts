@@ -447,29 +447,29 @@ export const INITIAL_MOCK_ALERTS: Alert[] = [
   }
 ];
 
-// Initial traffic rule violations (9 violations covering 4 violation types)
+// Initial traffic rule violations (9 violations covering major infractions: Red light, Wrong way, No-entry zone)
 export const INITIAL_MOCK_VIOLATIONS: Violation[] = [
   {
     id: 'VIO-201',
     plate: 'UP32-TR-9900',
     cameraId: 'CAM-06',
-    violationType: 'overspeeding',
-    measuredValue: '108 km/h',
-    thresholdValue: '80 km/h',
+    violationType: 'wrong_way',
+    measuredValue: 'Reverse vector 180° on entry ramp',
+    thresholdValue: 'One-Way Ramp Northbound',
     timestamp: '14:32:00',
     reviewed: false,
-    fineAmount: 2000
+    fineAmount: 5000
   },
   {
     id: 'VIO-202',
     plate: 'UP32-KL-5544', // Blacklisted vehicle also has violation
     cameraId: 'CAM-01',
-    violationType: 'overspeeding',
-    measuredValue: '72 km/h',
-    thresholdValue: '40 km/h',
+    violationType: 'red_light_jump',
+    measuredValue: 'Signal Phase 0 (Red + 3.4s)',
+    thresholdValue: 'Stop Line Stop',
     timestamp: '14:28:15',
     reviewed: false,
-    fineAmount: 2000
+    fineAmount: 1000
   },
   {
     id: 'VIO-203',
@@ -508,12 +508,12 @@ export const INITIAL_MOCK_VIOLATIONS: Violation[] = [
     id: 'VIO-206',
     plate: 'UP32-MN-2345',
     cameraId: 'CAM-03',
-    violationType: 'overspeeding',
-    measuredValue: '86 km/h',
-    thresholdValue: '60 km/h',
+    violationType: 'red_light_jump',
+    measuredValue: 'Signal Phase 0 (Red + 1.9s)',
+    thresholdValue: 'Stop Line Stop',
     timestamp: '11:42:19',
     reviewed: false,
-    fineAmount: 2000
+    fineAmount: 1000
   },
   {
     id: 'VIO-207',
@@ -605,10 +605,10 @@ export const generate250DetectionEvents = (): DetectionEvent[] => {
     {
       camId: 'CAM-01',
       time: '14:28:15',
-      speed: 72,
+      speed: 42,
       dir: 'Northbound' as const,
       conf: 97.8,
-      vio: 'Overspeeding — 72 km/h in 40 zone',
+      vio: 'Red-light jump — Stop line breach (Phase 0)',
       lane: 1,
       light: 'Daylight' as const,
       angle: 'Overhead Gantry 30°'
@@ -752,11 +752,11 @@ export const generate250DetectionEvents = (): DetectionEvent[] => {
     });
   });
 
-  // 4. Structured sequential trail for UP32-TR-9900 (High Speed Violator)
+  // 4. Structured sequential trail for UP32-TR-9900 (Traffic Rule Violator)
   const trailViolator = [
     { camId: 'CAM-05', time: '13:30:15', speed: 44, dir: 'Northbound' as const, conf: 98.0 },
     { camId: 'CAM-02', time: '13:58:00', speed: 51, dir: 'Northbound' as const, conf: 97.5 },
-    { camId: 'CAM-06', time: '14:32:00', speed: 108, dir: 'Eastbound' as const, conf: 99.2, vio: 'Overspeeding — 108 km/h in 80 zone' },
+    { camId: 'CAM-06', time: '14:32:00', speed: 68, dir: 'Eastbound' as const, conf: 99.2, vio: 'Wrong-way entry — Ramp contraflow violation' },
     { camId: 'CAM-08', time: '15:45:10', speed: 64, dir: 'Northbound' as const, conf: 96.1, vio: 'Lane jumping / Route anomaly' }
   ];
   trailViolator.forEach((step, idx) => {

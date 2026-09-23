@@ -166,13 +166,6 @@ export const AlertsPage: React.FC = () => {
     } else {
       const type = item.data.violationType;
       switch (type) {
-        case 'overspeeding':
-          return (
-            <span className="text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded uppercase tracking-tight inline-flex items-center space-x-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-              <span>Overspeeding</span>
-            </span>
-          );
         case 'red_light_jump':
           return (
             <span className="text-[11px] font-bold bg-red-100 text-red-900 border border-red-300 px-2 py-0.5 rounded uppercase tracking-tight inline-flex items-center space-x-1">
@@ -253,6 +246,7 @@ export const AlertsPage: React.FC = () => {
               <option value="anomaly">Route anomaly only</option>
               <option value="loitering">Loitering behavior only</option>
               <option value="traffic_violations">Traffic violations (Speed, Signal, Wrong-way, No-entry)</option>
+              <option value="traffic_violations">Major traffic violations (Signal jump, Wrong-way, No-entry)</option>
             </select>
           </div>
 

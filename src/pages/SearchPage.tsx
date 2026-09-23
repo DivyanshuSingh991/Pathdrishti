@@ -107,9 +107,9 @@ export const SearchPage: React.FC = () => {
     },
     {
       plate: 'UP32-TR-9900',
-      label: 'Overspeeding Violator',
-      dotColor: 'bg-amber-500',
-      badgeClass: 'bg-amber-50 text-amber-900 border-amber-300'
+      label: 'Wrong-Way Violator',
+      dotColor: 'bg-red-500',
+      badgeClass: 'bg-red-50 text-red-900 border-red-300'
     },
     {
       plate: 'UP32-AB-1234',
@@ -520,13 +520,7 @@ export const SearchPage: React.FC = () => {
                     <tr key={vio.id} className="hover:bg-gray-50 transition-colors">
                       <td className="py-2 px-3 font-semibold text-gray-900">{vio.id}</td>
                       <td className="py-2 px-3 font-sans">
-                        <span
-                          className={`text-[11px] font-bold px-2 py-0.5 rounded uppercase ${
-                            vio.violationType === 'overspeeding'
-                              ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                              : 'bg-red-100 text-red-800 border border-red-200'
-                          }`}
-                        >
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded uppercase bg-red-100 text-red-800 border border-red-200">
                           {vio.violationType.replace(/_/g, ' ')}
                         </span>
                       </td>
@@ -534,11 +528,7 @@ export const SearchPage: React.FC = () => {
                         {cam?.name || vio.cameraId}
                       </td>
                       <td className="py-2 px-3 text-gray-700">{vio.timestamp} IST</td>
-                      <td
-                        className={`py-2 px-3 font-bold ${
-                          vio.violationType === 'overspeeding' ? 'text-amber-800' : 'text-red-700'
-                        }`}
-                      >
+                      <td className="py-2 px-3 font-bold text-red-700">
                         {vio.measuredValue}
                       </td>
                       <td className="py-2 px-3 text-gray-600">{vio.thresholdValue}</td>
